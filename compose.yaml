@@ -1,0 +1,72 @@
+# ─── CredYazh — Docker Compose ───────────────────────────────────────────────
+# Starts all three services: ai-service (Python), server (Node), client (Nginx)
+#
+# Quick start for teammates:
+#   1. Copy credyazh/ai-service/.env.example  → credyazh/ai-service/.env  and fill in keys
+#   2. Copy credyazh/server/.env.example      → credyazh/server/.env      and fill in keys
+#   3. docker compose up --build
+#   4. Open http://localhost in your browser
+#
+# See TEAM_SETUP.md for the full onboarding guide.
+
+name: credyazh
+
+services:
+
+  # ── 1. Python FastAPI AI Service ──────────────────────────────────────────
+  ai-service:
+    build:
+      context: ./credyazh/ai-service
+      dockerfile: Dockerfile
+    container_name: credyazh-ai
+    restart: unless-stopped
+    env_file:
+      - ./credyazh/ai-service/.env # GEMINI_API_KEY and timeout config
+    ports:
+      - "8000:8000" # Optional: expose for direct testing
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ── 2. Node.js Express API Server ─────────────────────────────────────────
+  server:
+    build:
+      context: ./credyazh/server
+      dockerfile: Dockerfile
+    container_name: credyazh-server
+    restart: unless-stopped
+    env_file:
+      - ./credyazh/server/.env # MONGODB_URI, PORT, AI_CLIENT_TIMEOUT_MS
+    environment:
+      # Override AI_SERVICE_URL to point at the ai-service container (not localhost)
+      AI_SERVICE_URL: http://ai-service:8000
+    ports:
+      - "4000:4000" # Optional: expose for direct API testing
+    depends_on:
+      ai-service:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "node", "-e", "require('http').get('http://localhost:4000/api/customers', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))" ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # ── 3. React + Vite PWA (Nginx) ───────────────────────────────────────────
+  client:
+    build:
+      context: ./credyazh/client
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api # Nginx proxies /api → server container
+        VITE_YAZH_TOUR_ENABLED: "true"
+    container_name: credyazh-client
+    restart: unless-stopped
+    ports:
+      - "5173:80" # Access the app at http://localhost
+    depends_on:
+      server:
+        condition: service_healthy

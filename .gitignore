@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+**/node_modules/
+.venv/
+**/.venv/
+venv/
+**/venv/
+
+# Environment files and credentials (CRITICAL: Never commit secrets)
+.env
+**/.env
+.env.*
+**/.env.*
+.env.local
+**/.env.local
+!.env.example
+!**/.env.example
+
+# Build outputs
+dist/
+**/dist/
+build/
+**/build/
+
+# Python caches
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+**/.pytest_cache/
+
+# Logs
+*.log
+**/*.log
+
+# Editor & OS files
+.vscode/
+**/.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Docker
+*.log
+.compose-volumes/
+.data/
+
